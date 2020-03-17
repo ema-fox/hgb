@@ -18,7 +18,7 @@ displayOptions all = concat all -- Option, AnotherOption, ..., or YetAnotherOpti
             of
         [slast, last] -> show slast ++ ", or " ++ show last
       -- Option, ...
-        (first:rest) -> show first ++ ", " ++ concat rest
+        first:rest -> show first ++ ", " ++ concat rest
 
 data ErrorType =
   ExpectedSymbol

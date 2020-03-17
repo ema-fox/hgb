@@ -133,7 +133,7 @@ lex = lex' 0
       | isSpace x = lex' (i + 1) xs
       | x == '\"' =
         let (tokens, afterTokens) = lexStr i all
-            endIndex = end (last tokens)
+            endIndex = end $ last tokens
          in tokens ++ lex' endIndex afterTokens
       | otherwise =
         let (token, afterToken)

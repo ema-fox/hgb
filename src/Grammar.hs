@@ -1,4 +1,6 @@
-module Grammar (Expression(..)) where
+module Grammar
+  ( Expression(..)
+  ) where
 
 data Expression
   = Number Int

@@ -29,7 +29,7 @@ closingDelim s =
     Symbol.LParen -> Symbol.RParen
 
 wrapError :: ErrorType -> Either Error any
-wrapError err = Left (Error err)
+wrapError err = Left $ Error err
 
 parseExpression :: Int -> [Token] -> Either Error (Expression, [Token])
 parseExpression precedence tokens = do
@@ -44,13 +44,12 @@ parseVariable :: [Token] -> Either Error (Expression, [Token])
 parseVariable (tok:rest) = Right (Grammar.Variable $ content tok, rest)
 
 parseEnumeration :: Token -> [Token] -> Either Error ([Expression], [Token])
-parseEnumeration
-  -- Parses an enumerated list
-  --   (data, "value")!
-  --   ^                 | list open
-  --                 ^   | list close
-  --    ^^^^^^^^^^^^^^^  | enumerated list and beyond
- listOpen enumerationAndBeyond@(firstToken:everythingElse)
+-- Parses an enumerated list
+--   (data, "value")!
+--   ^                 | list open
+--                 ^   | list close
+--    ^^^^^^^^^^^^^^^  | enumerated list and beyond
+parseEnumeration listOpen enumerationAndBeyond@(firstToken:everythingElse)
   | symbol firstToken == listClose = Right ([], everythingElse)
   | otherwise = parseEnumeration' enumerationAndBeyond
   where
@@ -62,7 +61,7 @@ parseEnumeration
       --   1. the item is followed by a item delimiter
       --   2. the item is followed by a list close
       --   3. neither (1) nor (2), which means the program is invalid
-      let (itemClose:restOfListAndBeyond) = afterItem
+      let itemClose:restOfListAndBeyond = afterItem
       let sym = symbol itemClose
       if | sym == Symbol.ValueDelim
           -- 1. The item is followed by a delimiter
@@ -88,13 +87,12 @@ parseEnumeration
                {expected = [Symbol.ValueDelim, listClose], actual = sym}
 
 parseCall :: Token -> Token -> [Token] -> Either Error (Expression, [Token])
-parseCall name listOpen parameterListAndBeyond
-  -- Parses a call expression of the form
-  --   foo(data, "value")!
-  --   ^^^                   | name
-  --      ^                 | list open
-  --       ^^^^^^^^^^^^^^^  | parameter list and beyond
- = do
+-- Parses a call expression of the form
+--   foo(data, "value")!
+--   ^^^                   | name
+--      ^                 | list open
+--       ^^^^^^^^^^^^^^^  | parameter list and beyond
+parseCall name listOpen parameterListAndBeyond = do
   (arguments, afterArguments) <-
     parseEnumeration listOpen parameterListAndBeyond
   return (Grammar.Call (content name) arguments, afterArguments)
@@ -107,7 +105,7 @@ parseName tokens = parseVariable tokens
 parseNumber :: [Token] -> Either Error (Expression, [Token])
 parseNumber (tok:rest) = Right (Grammar.Number value, rest)
   where
-    value = read (content tok) :: Int
+    value = read $ content tok :: Int
 
 parseParen :: [Token] -> Either Error (Expression, [Token])
 parseParen (parenToken:afterParen) = do

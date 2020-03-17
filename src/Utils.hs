@@ -7,7 +7,7 @@ splitWhen :: Eq a => (a -> Bool) -> [a] -> [[a]]
 splitWhen _ [] = [[]]
 splitWhen c xs =
   case remainder of
-    (y:ys) -> (first : splitWhen c ys)
+    y:ys -> (first : splitWhen c ys)
     [] -> [first]
   where
     (first, remainder) = break c xs
