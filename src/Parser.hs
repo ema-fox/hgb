@@ -5,7 +5,7 @@ module Parser
   ) where
 
 import Debug.Trace
-import Error (Error(..), ErrorType(..))
+import Error (Error(..), ErrorType(..), Expectation(..))
 import Grammar (Expression)
 import qualified Grammar
 import Symbol (Symbol(..))
@@ -28,8 +28,9 @@ closingDelim s =
   case s of
     Symbol.LParen -> Symbol.RParen
 
-wrapError :: ErrorType -> Either Error any
-wrapError err = Left (Error err)
+wrapExpectation :: Expectation -> Token -> Either Error any
+wrapExpectation expectation gotTok =
+  Left (Error (Expected expectation gotTok) (sourceSpan gotTok))
 
 -- This parsing module uses [Top-Down Operator Precedence] parsing (also known as a [Pratt Parsing]
 -- technique).  The basic idea is this:
@@ -43,15 +44,14 @@ wrapError err = Left (Error err)
 -- [Top-Down Operator Precedence]: https://tdop.github.io/
 -- [Pratt Parsing]: https://journal.stuffwithstuff.com/2011/03/19/pratt-parsers-expression-parsing-made-easy/
 parse :: [Token] -> Either Error [Expression]
-parse [Token Symbol.EndOfFile _ _ _] = Right []
+parse [Token Symbol.EndOfFile _ _] = Right []
 parse tokens = do
   (expression, afterExpression) <- parseExpression 0 tokens -- parse first expression
   -- Now, parse the rest
   let (tok:rest) = afterExpression
   let sym = symbol tok
   if | sym == Symbol.ExprEnd -> (expression :) <$> parse rest
-     | otherwise ->
-       wrapError ExpectedSymbol {expected = [Symbol.ExprEnd], actual = sym}
+     | otherwise -> wrapExpectation ExpressionTerminator tok
 
 parseExpression :: Int -> [Token] -> Either Error (Expression, [Token])
 parseExpression precedence tokens = do
@@ -66,14 +66,7 @@ parsePrefix tokens@(tok:_)
   | sym == Symbol.Number = parseNumber tokens
   | sym == Symbol.Name = parseName tokens
   | sym == Symbol.StrBound = parseString tokens
-  | otherwise =
-    wrapError
-      ExpectedSymbol
-        { expected =
-            prefixOperators ++
-            [Symbol.LParen, Symbol.Number, Symbol.Name, Symbol.StrBound]
-        , actual = sym
-        }
+  | otherwise = wrapExpectation Expression tok
   where
     prefixOperators = [Symbol.Plus, Symbol.Minus]
     sym = symbol tok
@@ -137,12 +130,7 @@ parseInfix precedence left tokens@(operatorTok:afterOperator)
         (right, afterExpression) <- parseExpression newPrecidence afterOperator
         let expression = Grammar.Call operatorStr [left, right]
         parseInfix precedence expression afterExpression
-  | otherwise =
-    wrapError
-      ExpectedSymbol
-        { expected = infixOperators ++ expressionTerminators
-        , actual = operatorSym
-        }
+  | otherwise = wrapExpectation ExpressionOrDelimiter operatorTok
   where
     expressionTerminators = [Symbol.ExprEnd, Symbol.ValueDelim]
     infixOperators =
@@ -163,7 +151,7 @@ parseNumber (tok:rest) = Right (Grammar.Number value, rest)
     value = read (content tok) :: Int
 
 parseName :: [Token] -> Either Error (Expression, [Token])
-parseName all@(name:listOpen@(Token Symbol.LParen _ _ _):parameterList) =
+parseName all@(name:listOpen@(Token Symbol.LParen _ _):parameterList) =
   parseCall name listOpen parameterList
 parseName tokens = parseVariable tokens
 
@@ -217,10 +205,7 @@ parseEnumeration
           -> return ([item], restOfListAndBeyond)
          | otherwise
           -- 3. Otherwise, the token is invalid.
-          ->
-           wrapError
-             ExpectedSymbol
-               {expected = [Symbol.ValueDelim, listClose], actual = sym}
+          -> wrapExpectation (EnumerationListDelimiter listClose) itemClose
 
 parseVariable :: [Token] -> Either Error (Expression, [Token])
 parseVariable (tok:rest) = Right (Grammar.Variable $ content tok, rest)
@@ -232,7 +217,7 @@ parseParen (parenToken:afterParen) = do
   let sym = symbol tok
   let closer = closingDelim $ symbol parenToken
   if | sym == closer -> return (expression, rest)
-     | otherwise -> wrapError ExpectedSymbol {expected = [closer], actual = sym}
+     | otherwise -> wrapExpectation (CloseToken closer) tok
 
 parsePrefixCall :: [Token] -> Either Error (Expression, [Token])
 parsePrefixCall (tok:rest) = do

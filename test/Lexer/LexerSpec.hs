@@ -121,33 +121,33 @@ spec = do
     forM_ cases $ \(keyword, symbol) -> do
       it ("lexes " ++ (show symbol) ++ ": " ++ keyword) $ do
         driveLexer keyword `shouldBe`
-          [(Token symbol keyword 0 (length keyword))]
+          [(Token symbol keyword (Span 0 (length keyword) ))]
   describe "LexOperator" $ do
     it "lexes custom operators as invalid" $ do
       driveLexer "@1@4" `shouldBe`
-        [ (Token Symbol.Invalid "@" 0 1)
-        , (Token Symbol.Number "1" 1 2)
-        , (Token Symbol.Invalid "@" 2 3)
-        , (Token Symbol.Number "4" 3 4)
+        [ (Token Symbol.Invalid "@" (Span 0 1 ))
+        , (Token Symbol.Number "1" (Span 1 2 ))
+        , (Token Symbol.Invalid "@" (Span 2 3 ))
+        , (Token Symbol.Number "4" (Span 3 4 ))
         ]
       driveLexer "=/@" `shouldBe`
-        [ (Token Symbol.Assign "=" 0 1)
-        , (Token Symbol.Div "/" 1 2)
-        , (Token Symbol.Invalid "@" 2 3)
+        [ (Token Symbol.Assign "=" (Span 0 1 ))
+        , (Token Symbol.Div "/" (Span 1 2 ))
+        , (Token Symbol.Invalid "@" (Span 2 3 ))
         ]
     it "does not lex combinations as invalid" $ do
       driveLexer "=/=!:" `shouldBe`
-        [ (Token Symbol.NEq "=/=" 0 3)
-        , (Token Symbol.ExprEnd "!" 3 4)
-        , (Token Symbol.TypeDelim ":" 4 5)
+        [ (Token Symbol.NEq "=/=" (Span 0 3 ))
+        , (Token Symbol.ExprEnd "!" (Span 3 4 ))
+        , (Token Symbol.TypeDelim ":" (Span 4 5 ))
         ]
   describe "lexAlphaKeyword" $ do
     it "lexes underscores in names correctly" $ do
-      driveLexer "foo_bar" `shouldBe` [(Token Symbol.Name "foo_bar" 0 7)]
+      driveLexer "foo_bar" `shouldBe` [(Token Symbol.Name "foo_bar" (Span 0 7 ))]
     it "lexes numbers in names correctly" $ do
-      driveLexer "foo22" `shouldBe` [(Token Symbol.Name "foo22" 0 5)]
+      driveLexer "foo22" `shouldBe` [(Token Symbol.Name "foo22" (Span 0 5 ))]
   describe "lex" $ do
     it "puts an EndOfFile Token at the end of the input" $ do
       let input = "foo_bar 1.5"
       let l = length input
-      last (lex input) `shouldBe` (Token Symbol.EndOfFile "" l l)
+      last (lex input) `shouldBe` (Token Symbol.EndOfFile "" (Span l l ))
